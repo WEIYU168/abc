@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>職涯大冒險：自由探索版</title>
+    
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 載入 React 核心庫 -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- 載入 Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-gray-900 selection:bg-blue-300 flex items-center justify-center min-h-screen p-4">
+    <div id="root" class="w-full max-w-4xl"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- 繪製小圖示 ---
+        const HeartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-500"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>;
+        const StarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-yellow-400"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
+        const MapIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg>;
+        const CheckIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-400"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+
+        // --- 六大場景與小遊戲題庫 ---
+        const SCENES = [
+            {
+                id: 'food', name: '餐飲工坊', icon: '🍰', cluster: '餐飲群',
+                npc: '阿布主廚', sprite: '👨‍🍳',
+                intro: "歡迎來到餐飲工坊！我們正在準備今天的重要訂單，但我的助手請假了，你能幫我計算一下材料嗎？",
+                gameIntro: "這是一個三層大蛋糕，比例非常重要！",
+                question: "烤這個特製蛋糕的『麵粉：糖』完美比例是 2:1。如果我們現在用了 50 克的糖，請問需要加入多少克的麵粉？",
+                options: ["50 克", "100 克", "150 克", "200 克"],
+                answer: 1, // 100克
+                success: "太棒了！比例完全正確，蛋糕烤得非常完美，香氣四溢！",
+                fail: "哎呀！麵粉加錯了，蛋糕烤出來太硬了..."
+            },
+            {
+                id: 'design', name: '設計藝廊', icon: '🎨', cluster: '設計群',
+                npc: '艾莉總監', sprite: '👩‍🎨',
+                intro: "嘿！你來得正好。我們正在為新遊戲設計角色，但在色彩搭配上遇到了一點麻煩。",
+                gameIntro: "身為設計師，對色彩的敏銳度是基本功喔！",
+                question: "客戶要求主角的披風必須是『紫色』的，但我們的顏料庫只剩下基礎顏色。請問哪兩種顏色混合可以調出紫色？",
+                options: ["紅色 + 黃色", "藍色 + 黃色", "紅色 + 藍色", "黃色 + 綠色"],
+                answer: 2, // 紅白藍
+                success: "完美的紫色！客戶非常滿意你的色彩直覺。",
+                fail: "這顏色看起來怪怪的... 客戶退稿了。"
+            },
+            {
+                id: 'tech', name: '資訊中心', icon: '💻', cluster: '電機與電子群',
+                npc: '駭客小P', sprite: '🧑‍💻',
+                intro: "嗶嗶... 系統發生錯誤！我們的主機正在受到干擾，你能幫忙找出程式碼的漏洞嗎？",
+                gameIntro: "仔細看，工程師最需要的就是『細心』與『邏輯』！",
+                question: "下面這行 Python 程式碼想要印出文字，但執行時卻報錯了。請問是哪裡出了問題？\n print(\"Hello World) ",
+                options: ["print 拼錯了", "少了一個右引號 (\")", "不能有空格", "少了一個分號 (;)"],
+                answer: 1, // 少了引號
+                success: "Bug 解除了！系統恢復正常運作，你真有工程師的天份！",
+                fail: "找錯地方了！系統當機啦..."
+            },
+            {
+                id: 'health', name: '護理站', icon: '🏥', cluster: '醫護群',
+                npc: '護理長南丁', sprite: '👩‍⚕️',
+                intro: "快來幫忙！剛剛有一位同學在實驗室不小心被熱水燙傷了手背！",
+                gameIntro: "面對緊急狀況，保持冷靜並採取正確的急救步驟是醫護人員的職責。",
+                question: "面對輕微的燒燙傷，第一時間我們應該採取哪個步驟？",
+                options: ["趕快塗抹牙膏", "立刻用自來水沖洗患部", "馬上拿冰塊敷在傷口上", "直接用紗布包紮起來"],
+                answer: 1, // 沖水
+                success: "處理得非常標準！『沖、脫、泡、蓋、送』的第一步就是沖冷水。",
+                fail: "千萬別這樣做！這樣可能會讓傷口更嚴重或感染！"
+            },
+            {
+                id: 'engineering', name: '工程基地', icon: '🛠️', cluster: '機械群',
+                npc: '鐵工老爹', sprite: '👷‍♂️',
+                intro: "機器的履帶鬆脫了！如果不趕快修好，整條生產線都要停擺了。",
+                gameIntro: "工欲善其事，必先利其器！選對工具是機械工程的第一步。",
+                question: "我們現在需要把一個『十字型』的螺絲緊緊鎖回去，你應該遞給我哪一種工具？",
+                options: ["鐵鎚", "活動板手", "十字螺絲起子", "尖嘴鉗"],
+                answer: 2, // 十字螺絲起子
+                success: "遞得好！螺絲鎖緊了，生產線順利重啟！",
+                fail: "拿這個怎麼鎖螺絲啦！又耽誤了幾分鐘..."
+            },
+            {
+                id: 'business', name: '商業大樓', icon: '💼', cluster: '商管群',
+                npc: '金控經理', sprite: '🕴️',
+                intro: "歡迎來到商業中心。我們正在策劃一項新的產品銷售案，需要你幫忙計算一下利潤。",
+                gameIntro: "成本與定價是商業運作的核心，來考考你的商業頭腦！",
+                question: "我們進貨一件商品的『成本是 50 元』。如果公司規定這件商品必須賺取『20 元的利潤』，請問這件商品的『定價』應該是多少？",
+                options: ["30 元", "50 元", "70 元", "100 元"],
+                answer: 2, // 70
+                success: "算得精準！成本加上利潤就是定價，這筆生意我們穩賺不賠。",
+                fail: "算錯啦！這樣定價公司會虧錢或是賣不出去的！"
+            }
+        ];
+
+        function App() {
+            // 遊戲狀態：'start' (開始畫面), 'map' (地圖), 'scene_intro' (劇情), 'minigame' (小遊戲), 'result' (單局結果), 'gameover' (死亡), 'victory' (破關)
+            const [view, setView] = useState('start');
+            const [hp, setHp] = useState(100);
+            const [score, setScore] = useState(0);
+            const [completedScenes, setCompletedScenes] = useState([]);
+            const [currentSceneId, setCurrentSceneId] = useState(null);
+            const [gameFeedback, setGameFeedback] = useState(null); // 記錄小遊戲答對或答錯的訊息
+
+            const currentScene = SCENES.find(s => s.id === currentSceneId);
+
+            // 進入特定場景
+            const enterScene = (id) => {
+                if (completedScenes.includes(id)) return; // 已經玩過不能再進
+                setCurrentSceneId(id);
+                setView('scene_intro');
+            };
+
+            // 處理玩家答題
+            const handleAnswer = (selectedIndex) => {
+                const isCorrect = selectedIndex === currentScene.answer;
+                if (isCorrect) {
+                    setScore(prev => prev + 20);
+                    setGameFeedback({ success: true, text: currentScene.success });
+                } else {
+                    setHp(prev => prev - 20);
+                    setGameFeedback({ success: false, text: currentScene.fail });
+                }
+                
+                setCompletedScenes(prev => [...prev, currentSceneId]);
+                setView('result');
+            };
+
+            // 處理結果結算與視圖切換
+            const closeResultAndContinue = () => {
+                if (hp <= 0 || (hp - 20 <= 0 && !gameFeedback.success)) {
+                    setView('gameover');
+                } else if (completedScenes.length >= SCENES.length) {
+                    setView('victory');
+                } else {
+                    setView('map');
+                }
+            };
+
+            // 重新開始遊戲
+            const resetGame = () => {
+                setHp(100);
+                setScore(0);
+                setCompletedScenes([]);
+                setCurrentSceneId(null);
+                setView('map');
+            };
+
+            // --- UI 組件 ---
+            
+            // 頂部狀態列
+            const StatusBar = () => (
+                <div className="bg-black/80 text-white p-3 px-6 flex justify-between items-center border-b-2 border-gray-700 backdrop-blur-sm z-50">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 font-bold text-lg">
+                            <HeartIcon /> 
+                            <span className={hp <= 30 ? "text-red-400 animate-pulse" : ""}>HP: {hp}</span>
+                        </div>
+                        <div className="flex items-center gap-2 font-bold text-lg">
+                            <StarIcon /> 積分: {score}
+                        </div>
+                    </div>
+                    <div className="text-gray-300 font-medium tracking-widest text-sm flex items-center gap-2">
+                        <MapIcon /> 未來群島地圖
+                    </div>
+                </div>
+            );
+
+            return (
+                <div 
+                    className="w-full h-[700px] rounded-2xl shadow-2xl overflow-hidden relative flex flex-col transition-all duration-500 border-4 border-gray-800"
+                    style={{ 
+                        // 設定背景圖，並加入 rgba 遮罩讓文字更容易閱讀
+                        backgroundImage: "linear-gradient(rgba(17, 24, 39, 0.7), rgba(17, 24, 39, 0.8)), url('背景.png')", 
+                        backgroundSize: 'cover', 
+                        backgroundPosition: 'center'
+                    }}
+                >
+                    {/* 遊戲開始畫面 */}
+                    {view === 'start' && (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center p-8 z-10">
+                            <div className="text-9xl mb-6 drop-shadow-2xl animate-bounce">🧭</div>
+                            <h1 className="text-5xl font-extrabold text-white mb-4 drop-shadow-lg tracking-wider">職涯大冒險</h1>
+                            <h2 className="text-2xl text-blue-300 mb-8 drop-shadow-md">未來羅盤：自由探索篇</h2>
+                            <p className="text-gray-200 max-w-lg mb-8 leading-relaxed text-lg bg-black/40 p-4 rounded-xl border border-gray-600">
+                                歡迎來到未來群島！這裡有六大職業領域等你探索。<br/>
+                                參與各群科的挑戰，答對獲得 <strong className="text-yellow-400">積分</strong>，答錯會損失 <strong className="text-red-400">生命值</strong>。<br/>
+                                準備好探索你的未來了嗎？
+                            </p>
+                            <button 
+                                onClick={() => setView('map')}
+                                className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-12 rounded-full text-xl shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all hover:scale-105"
+                            >
+                                開始探索
+                            </button>
+                        </div>
+                    )}
+
+                    {/* 地圖探索畫面 */}
+                    {view === 'map' && (
+                        <div className="flex-1 flex flex-col z-10">
+                            <StatusBar />
+                            <div className="flex-1 p-6 flex flex-col items-center justify-center">
+                                <h2 className="text-3xl text-white font-bold mb-8 drop-shadow-lg">請選擇你想探索的領域</h2>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-3xl">
+                                    {SCENES.map((scene) => {
+                                        const isCompleted = completedScenes.includes(scene.id);
+                                        return (
+                                            <button 
+                                                key={scene.id}
+                                                onClick={() => enterScene(scene.id)}
+                                                disabled={isCompleted}
+                                                className={`relative flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all duration-300
+                                                    ${isCompleted 
+                                                        ? 'bg-gray-800/80 border-gray-600 cursor-not-allowed opacity-70 grayscale' 
+                                                        : 'bg-indigo-900/80 border-indigo-500 hover:bg-indigo-700/90 hover:scale-105 hover:shadow-[0_0_20px_rgba(99,102,241,0.6)] cursor-pointer'
+                                                    }
+                                                `}
+                                            >
+                                                <div className="text-5xl mb-3 drop-shadow-md">{scene.icon}</div>
+                                                <div className="text-white font-bold text-lg mb-1">{scene.name}</div>
+                                                <div className="text-blue-300 text-sm">{scene.cluster}</div>
+                                                
+                                                {isCompleted && (
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl">
+                                                        <div className="bg-green-500 rounded-full p-1"><CheckIcon /></div>
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 場景對話介紹 */}
+                    {view === 'scene_intro' && currentScene && (
+                        <div className="flex-1 flex flex-col z-10">
+                            <StatusBar />
+                            <div className="flex-1 relative flex flex-col items-center justify-end p-6">
+                                <div className="text-9xl mb-8 animate-[bounce_3s_infinite] drop-shadow-2xl">
+                                    {currentScene.sprite}
+                                </div>
+                                
+                                <div className="w-full bg-black/85 border-t-4 border-blue-500 rounded-xl p-6 relative">
+                                    <div className="absolute -top-5 left-6 bg-blue-600 text-white px-5 py-1 rounded-lg font-bold shadow-lg">
+                                        {currentScene.npc}
+                                    </div>
+                                    <p className="text-white text-xl leading-relaxed mb-4 mt-2">
+                                        {currentScene.intro}
+                                    </p>
+                                    <p className="text-blue-300 text-lg mb-6 italic">
+                                        「{currentScene.gameIntro}」
+                                    </p>
+                                    <div className="flex justify-end gap-4">
+                                        <button 
+                                            onClick={() => setView('map')}
+                                            className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-bold transition-colors"
+                                        >
+                                            返回地圖
+                                        </button>
+                                        <button 
+                                            onClick={() => setView('minigame')}
+                                            className="px-6 py-2 bg-yellow-500 hover:bg-yellow-400 text-black rounded-lg font-bold shadow-lg transition-colors"
+                                        >
+                                            接受挑戰！
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 小遊戲遊玩畫面 */}
+                    {view === 'minigame' && currentScene && (
+                        <div className="flex-1 flex flex-col z-10">
+                            <StatusBar />
+                            <div className="flex-1 flex flex-col items-center justify-center p-6">
+                                <div className="w-full max-w-2xl bg-white/10 backdrop-blur-md border border-white/20 p-8 rounded-2xl shadow-2xl">
+                                    <div className="flex items-center gap-3 mb-6 border-b border-white/20 pb-4">
+                                        <span className="text-4xl">{currentScene.icon}</span>
+                                        <h2 className="text-2xl font-bold text-white">任務挑戰：{currentScene.cluster}</h2>
+                                    </div>
+                                    
+                                    <p className="text-white text-xl leading-relaxed mb-8 whitespace-pre-wrap font-medium">
+                                        {currentScene.question}
+                                    </p>
+
+                                    <div className="grid grid-cols-1 gap-4">
+                                        {currentScene.options.map((opt, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => handleAnswer(idx)}
+                                                className="w-full text-left bg-indigo-900/70 hover:bg-indigo-600 text-white text-lg p-4 rounded-xl border border-indigo-400/50 hover:border-white transition-all shadow-md group"
+                                            >
+                                                <span className="inline-block w-8 text-indigo-300 group-hover:text-white font-bold">{String.fromCharCode(65 + idx)}.</span>
+                                                {opt}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 單局結果畫面 */}
+                    {view === 'result' && gameFeedback && (
+                        <div className="flex-1 flex flex-col z-10">
+                            <StatusBar />
+                            <div className="flex-1 flex items-center justify-center p-6 bg-black/50">
+                                <div className={`w-full max-w-lg p-8 rounded-2xl shadow-2xl text-center border-4 ${gameFeedback.success ? 'bg-green-900/90 border-green-500' : 'bg-red-900/90 border-red-500'}`}>
+                                    <div className="text-6xl mb-4">
+                                        {gameFeedback.success ? '🎉' : '💥'}
+                                    </div>
+                                    <h2 className={`text-3xl font-bold mb-2 ${gameFeedback.success ? 'text-green-300' : 'text-red-300'}`}>
+                                        {gameFeedback.success ? '挑戰成功！' : '挑戰失敗...'}
+                                    </h2>
+                                    <p className="text-white text-xl mb-6 leading-relaxed">
+                                        {gameFeedback.text}
+                                    </p>
+                                    
+                                    <div className="flex justify-center gap-6 mb-8">
+                                        {gameFeedback.success ? (
+                                            <div className="bg-black/40 px-6 py-3 rounded-xl flex items-center gap-2 text-yellow-400 font-bold text-xl">
+                                                <StarIcon /> 積分 +20
+                                            </div>
+                                        ) : (
+                                            <div className="bg-black/40 px-6 py-3 rounded-xl flex items-center gap-2 text-red-400 font-bold text-xl">
+                                                <HeartIcon /> 生命 -20
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <button 
+                                        onClick={closeResultAndContinue}
+                                        className="bg-white text-black font-bold py-3 px-8 rounded-full text-lg hover:bg-gray-200 transition-all"
+                                    >
+                                        繼續冒險
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 遊戲結束 (死亡) */}
+                    {view === 'gameover' && (
+                        <div className="flex-1 flex flex-col items-center justify-center z-10 bg-black/80">
+                            <div className="text-9xl mb-6">☠️</div>
+                            <h1 className="text-5xl font-bold text-red-500 mb-4">生命值耗盡</h1>
+                            <p className="text-gray-300 text-xl mb-8">職場如戰場，有時候一點小失誤就會帶來嚴重的後果。<br/>休息一下，重新挑戰吧！</p>
+                            <p className="text-yellow-400 text-2xl font-bold mb-8">最終積分：{score}</p>
+                            <button 
+                                onClick={resetGame}
+                                className="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-8 rounded-full text-xl transition-all"
+                            >
+                                重新開始遊戲
+                            </button>
+                        </div>
+                    )}
+
+                    {/* 遊戲破關 (勝利) */}
+                    {view === 'victory' && (
+                        <div className="flex-1 flex flex-col items-center justify-center z-10 bg-black/70">
+                            <div className="text-9xl mb-6 animate-bounce">🏆</div>
+                            <h1 className="text-5xl font-bold text-yellow-400 mb-4 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]">探索完成！</h1>
+                            <p className="text-white text-2xl mb-4">恭喜你體驗了六大職業領域的挑戰！</p>
+                            
+                            <div className="bg-indigo-900/80 border border-indigo-400 p-6 rounded-xl my-6 text-center max-w-md">
+                                <h3 className="text-indigo-200 text-lg mb-2">你的職涯探索總成績</h3>
+                                <div className="text-4xl font-extrabold text-white flex items-center justify-center gap-3">
+                                    <StarIcon /> {score} 分
+                                </div>
+                                <div className="text-red-400 font-bold mt-2 flex items-center justify-center gap-2">
+                                    剩餘生命：<HeartIcon /> {hp}
+                                </div>
+                            </div>
+
+                            <p className="text-blue-200 text-lg mb-8 max-w-lg text-center leading-relaxed">
+                                {score === 120 ? "完美通關！你是全方位的頂尖人才！" : 
+                                 score >= 80 ? "表現優異！你已經具備了很好的職業基礎知識！" : 
+                                 "順利過關！雖然遇到一些挫折，但每一次錯誤都是學習！"}
+                            </p>
+
+                            <button 
+                                onClick={resetGame}
+                                className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-all"
+                            >
+                                再玩一次
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
